@@ -338,3 +338,39 @@ class PasswordManagerController:
             pyautogui.press("enter")
         except Exception:
             pass
+
+    def autofill_credentials(
+        self,
+        username: str,
+        password: str,
+        wait_seconds: int = 1,
+    ) -> None:
+        """Auto-type username and password into the active field.
+
+        Waits a short delay before typing to allow the user to click on
+        the target field.
+        """
+        thread = threading.Thread(
+            target=self._autofill_worker,
+            args=(username, password, wait_seconds),
+            daemon=True,
+        )
+        thread.start()
+
+    def _autofill_worker(
+        self,
+        username: str,
+        password: str,
+        wait_seconds: int,
+    ) -> None:
+        time.sleep(wait_seconds)
+
+        if not _PYAUTOGUI_AVAILABLE:
+            return
+
+        try:
+            pyautogui.typewrite(username, interval=0.05)
+            pyautogui.press("tab")
+            pyautogui.typewrite(password, interval=0.05)
+        except Exception:
+            pass
