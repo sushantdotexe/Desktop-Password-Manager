@@ -426,11 +426,15 @@ class MainFrame(ctk.CTkFrame):
         self._build_toolbar()
         self._build_table()
         self._build_statusbar()
+        
+        # Give focus to table instead of search box to prevent accidental text input
+        # when returning from launched browser window
+        self.after(100, self._tree.focus_set)
 
     def _build_toolbar(self) -> None:
         toolbar = ctk.CTkFrame(self, height=50, corner_radius=8)
         toolbar.grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
-        toolbar.columnconfigure(5, weight=1)  # push lock to the right
+        toolbar.columnconfigure(6, weight=1)  # push lock to the right
 
         btn_cfg = {"width": 100, "height": 34}
 
@@ -453,9 +457,14 @@ class MainFrame(ctk.CTkFrame):
         ).grid(row=0, column=3, padx=4, pady=8)
 
         ctk.CTkButton(
+            toolbar, text="� Autofill", command=self._on_autofill,
+            fg_color="#16a085", hover_color="#117a65", **btn_cfg
+        ).grid(row=0, column=4, padx=4, pady=8)
+
+        ctk.CTkButton(
             toolbar, text="🚀 Launch", command=self._on_launch,
             fg_color="#8e44ad", hover_color="#6c3483", **btn_cfg
-        ).grid(row=0, column=4, padx=4, pady=8)
+        ).grid(row=0, column=5, padx=4, pady=8)
 
         # Search box
         self._search_var = tk.StringVar()
@@ -466,18 +475,18 @@ class MainFrame(ctk.CTkFrame):
             placeholder_text="🔍  Search …",
             width=200,
         )
-        search_entry.grid(row=0, column=5, padx=8, pady=8, sticky="e")
+        search_entry.grid(row=0, column=6, padx=8, pady=8, sticky="e")
 
         # Lock + settings
         ctk.CTkButton(
             toolbar, text="🔒 Lock", command=self._app.lock,
             fg_color="gray40", hover_color="gray30", **btn_cfg
-        ).grid(row=0, column=6, padx=(4, 6), pady=8)
+        ).grid(row=0, column=7, padx=(4, 6), pady=8)
 
         ctk.CTkButton(
             toolbar, text="⚙", command=self._open_settings,
             fg_color="gray40", hover_color="gray30", width=40, height=34
-        ).grid(row=0, column=7, padx=(0, 8), pady=8)
+        ).grid(row=0, column=8, padx=(0, 8), pady=8)
 
     def _build_table(self) -> None:
         import tkinter.ttk as ttk
@@ -655,6 +664,24 @@ class MainFrame(ctk.CTkFrame):
                 "Make sure 'pyperclip' and a clipboard tool are installed.",
             )
 
+    def _on_autofill(self) -> None:
+        self._app.controller.record_activity()
+        entry = self._selected_entry()
+        if not entry:
+            messagebox.showinfo("Autofill", "Please select an entry first.")
+            return
+        
+        # Release focus from search box and give it to table to prevent
+        # autofill from typing into search box
+        self._tree.focus_set()
+        
+        self._app.controller.autofill_credentials(
+            entry["username"], entry["password"]
+        )
+        self._update_status(
+            "Autofill ready – click on the target field within 1 second."
+        )
+
     def _on_launch(self) -> None:
         self._app.controller.record_activity()
         entry = self._selected_entry()
@@ -664,6 +691,11 @@ class MainFrame(ctk.CTkFrame):
         if not entry.get("url"):
             messagebox.showwarning("Launch", "This entry has no URL.")
             return
+        
+        # Set focus to table to prevent accidental text input to search box
+        # if user returns to app window before autotype completes
+        self._tree.focus_set()
+        
         self._app.controller.launch_and_autotype(
             entry["url"], entry["username"], entry["password"]
         )
